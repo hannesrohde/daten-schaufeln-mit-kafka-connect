@@ -32,3 +32,4 @@ https://strimzi.io/docs/operators/latest/full/deploying.html#using-kafka-connect
 Build extended container image
 
     buildah bud -t localhost:32000/kafka-with-plugins:0.20.0-kafka-2.6.0
+    buildah push --tls-verify=false localhost:32000/kafka-with-plugins:0.20.0-kafka-2.6.0
