@@ -15,13 +15,13 @@ spec:
     connection.password: mysqlpw
     dialect.name: MySqlDatabaseDialect
 
-    topics: logfiles
+    topics: logfiles-with-schema
     table.name.format: logs
     pk.mode: none
 
     value.converter: org.apache.kafka.connect.json.JsonConverter
-    value.converter.schemas.enable: false
+    value.converter.schemas.enable: true
 
     transforms: renameField
     transforms.renameField.type: org.apache.kafka.connect.transforms.ReplaceField$Value
-    transforms.renameField.renames: "raw:message"
+    transforms.renameField.renames: "file:source,raw:message"

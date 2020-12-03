@@ -19,6 +19,11 @@ Run a MySQL instance that is pre-populated with a simple inventory/orders databa
 
     kubectl apply -f 02-inventory-mysql.yaml
 
+Connect to the database with tool of your choice (e.g. DBeaver) and look at the contents
+
+    kubectl port-forward service/inventory-mysql 3306
+    $ SELECT * FROM orders;
+
 ## Deploy source connector
 
 Deploy the source connector:

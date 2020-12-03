@@ -10,7 +10,7 @@ spec:
   class: org.apache.kafka.connect.file.FileStreamSourceConnector
   tasksMax: 1
   config:
-    # read from message.log, write events to topic "filelogs"
+    # read from message.log, write events to topic "logfiles"
     file: /tmp/messages.log
     topic: logfiles
 

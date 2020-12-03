@@ -44,12 +44,16 @@ spec:
     incrementing.column.name: order_number
 
     # extract order_number and use as message key
-    transforms: valueToKey
+    transforms: valueToKey,extractKey
+
     transforms.valueToKey.type: org.apache.kafka.connect.transforms.ValueToKey
     transforms.valueToKey.fields: order_number
 
-    # convert message key and value to JSON (omit schema)
-    key.converter: org.apache.kafka.connect.json.JsonConverter
+    transforms.extractKey.type: org.apache.kafka.connect.transforms.ExtractField$Key
+    transforms.extractKey.field: order_number
+
+    # convert message key to string, value to schemaless JSON
+    key.converter: org.apache.kafka.connect.storage.StringConverter
     key.converter.schemas.enable: false
     value.converter: org.apache.kafka.connect.json.JsonConverter
     value.converter.schemas.enable: false

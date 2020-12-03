@@ -2,7 +2,7 @@
 apiVersion: kafka.strimzi.io/v1alpha1
 kind: KafkaConnector
 metadata:
-  name: file-source-messagelog
+  name: file-source-messagelog-with-schema
   labels:
     strimzi.io/cluster: my-connect-cluster
     scenario: "3"
@@ -10,12 +10,13 @@ spec:
   class: org.apache.kafka.connect.file.FileStreamSourceConnector
   tasksMax: 1
   config:
-    # read from message.log, write events to topic "filelogs"
+    # read from message.log, write events to topic "logfiles-with-schema"
     file: /tmp/messages.log
-    topic: logfiles
+    topic: logfiles-with-schema
 
     # wrap raw data and add file info
-    transforms: hoistField,insertField
+    transforms: hoistField,insertField,valueToKey
+
     transforms.hoistField.type: org.apache.kafka.connect.transforms.HoistField$Value
     transforms.hoistField.field: "raw"
 
@@ -23,8 +24,11 @@ spec:
     transforms.insertField.static.field: "file"
     transforms.insertField.static.value: "messages.log"
 
-    # convert message key and value to JSON (omit schema)
+    transforms.valueToKey.type: org.apache.kafka.connect.transforms.ValueToKey
+    transforms.valueToKey.fields: raw
+
+    # convert message key and value to JSON (include schema)
     key.converter: org.apache.kafka.connect.json.JsonConverter
-    key.converter.schemas.enable: false
+    key.converter.schemas.enable: true
     value.converter: org.apache.kafka.connect.json.JsonConverter
-    value.converter.schemas.enable: false
+    value.converter.schemas.enable: true

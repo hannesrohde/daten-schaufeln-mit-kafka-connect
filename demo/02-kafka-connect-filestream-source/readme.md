@@ -13,34 +13,26 @@ Observe the Kafka topic with `kaf`:
 
     kaf consume logfiles
 
-## Create logfile
-
-Run a shell in the kakfa connect pod and create the file `messages.log`:
-
-    kubectl exec -it my-connect-cluster-connect-84bc6bfcf5-c8lv5 /bin/bash
-    $ echo "Hello world!" >> /tmp/messages.log
-
 ## Deploy source connector
 
 Deploy the source connector:
 
     kubectl apply -f 02-kafka-connector.yaml
 
-Shortly after deployment, the connector starts exporting data.
-This can be observed with `kaf` (see above).
+Shortly after deployment, kafka connect logs warnings complaining that the log file is not there:
 
-## Append data to logfile
+    kubectl logs -f my-connect-cluster-connect-55846645d9-6znnq
 
-Run a shell in the kakfa connect pod and add more lines to the file `messages.log`:
+## Create logfile
+
+Run a shell in the kakfa connect pod and create the file `messages.log`:
 
     kubectl exec -it my-connect-cluster-connect-84bc6bfcf5-c8lv5 /bin/bash
-    $ echo "Hello again, world!" >> /tmp/messages.log
-    $ echo "This is tech friday 2020" >> /tmp/messages.log
+    $ echo 'Hello world!' >> /tmp/messages.log
 
-The new data can be observed with `kaf` (see above).
+Append more data to logfile:
 
-## Cleanup
+    $ echo 'Hello again, world!' >> /tmp/messages.log
+    $ echo 'This is tech friday 2020' >> /tmp/messages.log
 
-Delete all resources we created for scenario 2:
-
-    kubectl delete all,kafkatopic,kafkaconnector -l scenario=2
+Each new line can be observed with `kaf` (see above).

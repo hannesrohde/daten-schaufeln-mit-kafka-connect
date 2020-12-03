@@ -1,4 +1,4 @@
-## Plugins
+## Kafka Connect Plugins
 
 Auf [Confluent Hub](https://www.confluent.io/hub/) sind zahllose kostenlose und kommerzielle Plugins verfügbar:
 

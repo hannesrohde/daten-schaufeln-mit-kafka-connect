@@ -1,85 +1,49 @@
-# Scenario 3 - publishing data on telegram
+# Scenario 3 - writing data from a kafka topic to a database
 
-In this scenario, a telegram sink connector is used to publish data from a kafka topic to telegram.
+In this scenario, a JDBC sink connector is used to write the contents from a kafka topic to a SQL database.
 
-We reuse the source connector and topic from scenario 2, please follow the steps there to set up.
+We reuse the database from scenario 1, please follow the steps there to set up.
 
-## Create a telegram bot and group
+## Create a database table to hold the data
 
-Using your telegram client, start a conversation with the @BotFather and create a new bot as described [here](https://github.com/fbascheper/kafka-connect-telegram)
+Connect to the database with tool of your choice (e.g. DBeaver) and add a table for persisted log messages:
 
-    /newbot
+    kubectl port-forward service/inventory-mysql 3306
+    
+    CREATE TABLE logs(
+        id        INT NOT NULL AUTO_INCREMENT,
+        source    VARCHAR NOT NULL,
+        message   VARCHAR NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+    );
 
-    > BotFather, [02.12.20 20:35]
-    > Alright, a new bot. How are we going to call it? Please choose a name for your bot.
+## Prepare topic and source connector
 
-    logfilesBot
+In this scenario we use a new topic and a source connector based on scenario 2:
 
-    > BotFather, [02.12.20 20:36]
-    > Good. Now let's choose a username for your bot.
-    > It must end in `bot`. Like this, for example:
-    > TetrisBot or tetris_bot.
+    kubectl apply -f 01-kafka-topic.yaml
+    kubectl apply -f 02-kafka-source-connector.yaml
 
-    logfilesBot
-
-    > BotFather, [02.12.20 20:36]
-    > Done! Congratulations on your new bot. You will find it at t.me/logfilesBot.
-    > You can now add a description, about section and profile picture for your bot, see /help for a list of commands.
-    > By the way, when you've finished creating your cool bot, ping our Bot Support if you want a better username for it.
-    > Just make sure the bot is fully operational before you do this.
-    > Use this token to access the HTTP API:
-    > 1344941351:AAEmPOnZTWWTVDAddn-vMINWPE5VZP0cfU0
-    > Keep your token secure and store it safely, it can be used by anyone to control your bot.
-    > For a description of the Bot API, see this page: https://core.telegram.org/bots/api
-
-Next, create a group "logfiles" in your telegram client and add @logfilesBot to it.
-Send a test message and then determine the group chat id:
-
-    curl https://api.telegram.org/bot1344941351:AAEmPOnZTWWTVDAddn-vMINWPE5VZP0cfU0/getUpdates
-
-The json response should contain the chat id:
-
-    {
-        "ok":true,
-        "result":[
-            {
-                "update_id":756181107,
-                "message":{
-                    "message_id":4,
-                    "from":{
-                        "id":974935068,
-                        "is_bot":false,
-                        "first_name":"Hannes"
-                    },
-                    "chat":{
-                        "id":-410243989,
-                        "title":"logfiles",
-                        "type":"group",
-                        "all_members_are_administrators":true
-                    },
-                    "date":1606938782,
-                    "text":"/test",
-                    "entities":[
-                        {
-                            "offset":0,
-                            "length":5,
-                            "type":"bot_command"
-                        }
-                    ]
-                }
-            }
-        ]
-    }
+The source connector transfers the same data as before, but now includes a JSON schema with the message.
 
 ## Deploy sink connector
 
+Deploy the JDBC sink connector that writes the data into the database:
+
     kubectl apply -f 03-kafka-sink-connector.yaml
 
+## Observe table contents
 
-## Cleanup
+Shortly after the connector has been deployed, data should appear in the database table.
+This can be observed with the database tool (see above).
 
-Delete all resources we created for scenario 2 and 3:
+## Append data to logfile
 
-    kubectl delete all,kafkatopic,kafkaconnector -l scenario=1
-    kubectl delete all,kafkatopic,kafkaconnector -l scenario=2
-    kubectl delete all,kafkatopic,kafkaconnector -l scenario=3
+Run a shell in the kafka connect pod and add more lines to the file `messages.log`:
+
+    kubectl exec -it my-connect-cluster-connect-84bc6bfcf5-c8lv5 /bin/bash
+    $ echo "Hello again, world!" >> /tmp/messages.log
+    $ echo "This is tech friday 2020" >> /tmp/messages.log
+
+Shortly after adding the lines, new rows should appear in the database.
