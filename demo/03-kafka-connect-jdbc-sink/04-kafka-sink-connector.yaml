@@ -1,0 +1,27 @@
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaConnector
+metadata:
+  name: logfiles-sink-jdbc
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+    scenario: "3"
+spec:
+  class: io.confluent.connect.jdbc.JdbcSinkConnector
+  tasksMax: 1
+  config:
+    # database connection (never hardcode passwords in a real setup!)
+    connection.url: jdbc:mysql://inventory-mysql.kafka-demo.svc.cluster.local:3306/inventory
+    connection.user: mysqluser
+    connection.password: mysqlpw
+    dialect.name: MySqlDatabaseDialect
+
+    topics: logfiles
+    table.name.format: logs
+    pk.mode: none
+
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
+
+    transforms: renameField
+    transforms.renameField.type: org.apache.kafka.connect.transforms.ReplaceField$Value
+    transforms.renameField.renames: "raw:message"

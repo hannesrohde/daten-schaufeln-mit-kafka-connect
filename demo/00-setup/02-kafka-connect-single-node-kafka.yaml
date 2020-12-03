@@ -17,7 +17,7 @@ spec:
     trustedCertificates:
       - secretName: my-cluster-cluster-ca-cert
         certificate: ca.crt
-  image: localhost:32000/kafka-with-plugins:0.20.0-kafka-2.6.0
+  image: localhost:32000/kafka-with-plugins:0.20.0-kafka-2.6.0-1
   config:
     group.id: connect-cluster
     offset.storage.topic: connect-cluster-offsets

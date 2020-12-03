@@ -1,0 +1,13 @@
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: logfiles
+  labels:
+    strimzi.io/cluster: my-cluster
+    scenario: "2"
+spec:
+  partitions: 10
+  replicas: 1
+  config:
+    retention.ms: -1
+    cleanup.policy: compact

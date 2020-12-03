@@ -1,0 +1,55 @@
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaConnector
+metadata:
+  name: jdbc-source-inventory-orders
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+    scenario: "1"
+spec:
+  class: io.confluent.connect.jdbc.JdbcSourceConnector
+  tasksMax: 1
+  config:
+    # database connection (never hardcode passwords in a real setup!)
+    connection.url: jdbc:mysql://inventory-mysql.kafka-demo.svc.cluster.local:3306/inventory
+    connection.user: mysqluser
+    connection.password: mysqlpw
+    dialect.name: MySqlDatabaseDialect
+
+    # use topic "inventory-orders"
+    topic.prefix: inventory-orders
+
+    # the SQL query to run
+    query: >-
+      SELECT
+        o.order_number   AS order_number,
+        o.order_date     AS order_date,
+        o.quantity       AS order_quantity,
+        p.id             AS product_id,
+        p.name           AS product_name,
+        p.description    AS product_description,
+        p.weight         AS product_weight,
+        c.id             AS customer_id,
+        c.first_name     AS customer_first_name,
+        c.last_name      AS customer_last_name,
+        c.email          AS customer_email
+      FROM inventory.orders o
+      JOIN inventory.products p ON p.id = o.product_id
+      JOIN inventory.customers c ON c.id = o.purchaser
+
+    # run query every 5 seconds
+    poll.interval.ms: 5000
+
+    # find new orders by looking at incrementing order_numbers
+    mode: incrementing
+    incrementing.column.name: order_number
+
+    # extract order_number and use as message key
+    transforms: valueToKey
+    transforms.valueToKey.type: org.apache.kafka.connect.transforms.ValueToKey
+    transforms.valueToKey.fields: order_number
+
+    # convert message key and value to JSON (omit schema)
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false

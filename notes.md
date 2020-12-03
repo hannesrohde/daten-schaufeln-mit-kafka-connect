@@ -1,112 +1,3 @@
-# Daten schaufeln mit Kafka Connect
-
-## Typischer erster Kontakt mit Kafka
-
-Java / Spring Boot
-
-Consumer überträgt Daten aus Kafka-Topic in die Datenbank
-
-    class MyConsumer {
-        @Autowired
-        private Database db;
-    
-        @KafkaListener(
-            topics = "my-topic", id = "my-consumer"
-        )
-        public void onMessage(
-            @Header(RECEIVED_MESSAGE_KEY) String key,
-            @Payload String message,
-            Acknowledgement ack
-        ) {
-            if (message != null) {
-                // persist item in database
-                db.upsert(key, message);
-            } else /* tombstone message */ {
-                db.delete(key);
-            }
-            ack.acknowledeg();
-        }
-    }
-
-Dazu kommt
-- JPA Entity und Repository
-- ggfs. Mapping / Transformation
-- Error handling
-
- -> oft unnötige Fleißarbeit / Boilerplate
-
-## Vorstellung Kafka Connect
-
-eingeführt mit Kafka 0.9.0 (2015)
-
-Vorgefertigte Connectoren zum Streamen von Daten zu und aus Kafka, die viele Standard-Usecases abdecken
-
-rein konfigurativ, Basis-Funktionalität bereits implementiert
-
-## Kafka Connect: Source und Sink
-
-Source: Übertragung aus einer Datenquelle nach Kafka
-    - Producer
-    
-Sink: Übertragung aus Kafka in eine Datensenke
-    - Consumer
-
-## Was kann man per Kafka Connect anbinden?
-
-Connector-Plugins für viele Standard-Technologien
-
-## 
-
-Connect Cluster
-
-
-- Workers
-
-
-Welche Connectoren gibt es?
-
-## Connectoren
-
-Bundled:
-
-- Confluent Replicator
-- FileStream
-
-Als Plugin:
-
-- JDK-Code = Jar Files
-
-### Interne Datenhaltung
-
-- Configuration, Offsets, Status
-- in Kafka!
-- darüber auch automatisch Cluster-Bildung
-
-### Converter
-
-https://docs.confluent.io/current/connect/userguide.html#configuring-key-and-value-converters
-
-- Key und Value müssen konvertiert werden
--- AvroConverter
--- ProtobufConverter
--- JsonSchemaConverter
--- JsonConverter
--- StringConverter
--- ByteArrayConverter = Rohdaten
-
-### Standalone oder distributed
-
-- Connector Tasks laufen als "worker"
-- Standalone: alles in einer Maschine (1 Pod)
--- speichert in lokalem Filesystem
-- Distributed: Worker auf mehreren Maschinen verteilt laufen lassen = Connect Cluster
--- skalierbar
--- Fehlertolerant: Bei Ausfall eines Nodes werden Tasks neu verteilt. Datenhaltung in Kafka -> Stateless -> kein Datenverlust
-
-### Configuration
-
-per REST-API
-oder strimzi Operator auf Kubernetes
 
 ## Einsatzbeispiele
 
@@ -121,8 +12,49 @@ Daten aus einer Legacy-Applikation sollen per Kafka verteilt werden
 - Keine Möglichkeit, eigenen Code auf Maschine zu deployen
 - aber (wegen architektonischer Altlasten): Datenbank zugänglich 
 
--> Kafka Connect JDBC, JDBC-Treiber für DB2
--> Queries schreiben 
+https://de.confluent.io/blog/kafka-connect-deep-dive-jdbc-source-connector/
+
+
+
+
+Daten:
+https://www.mysqltutorial.org/mysql-sample-database.aspx/
+
+
+
+Einschränkung:
+
+- geänderte Daten erkennen: Timestamp, lfd. Id
+- gelöschte Daten nicht erkennbar
+
+-> Debezium CDC
+
+Live Demo:
+
+! Offset zurücksetzen !
+
+- Schauen
+  kubectl get all -l scenario=1
+- Datenbank deployen
+  kubectl apply -f 01-inventory-mysql.yaml
+- in Datenbank schauen
+  (eigenes Tab) kubectl port-forward service/inventory-mysql 3306
+  DBeaver starten
+- Topic anlegen
+  kaf topics
+  kubectl apply -f 02-kafka-topic.yaml
+  kaf topics
+- Topic überwachen
+  (eigenes Tab) kaf consume inventory-orders
+- Connector deployen
+  kubectl apply -f 03-kafka-connector.yaml
+- Neuen Datensatz einfügen
+  DBeaver 
+  INSERT INTO orders(order_number, order_date, purchaser, quantity, product_id)
+  VALUES (12345, '2020-12-04', 1004, 1, 108);
+- (Neue Message taucht auf in kaf)
+- Cleanup
+  kubectl delete all,kafkatopic,kafkaconnector -l scenario=1
 
 ### Szenario 2 (Steuerung)
 
@@ -131,7 +63,19 @@ Daten aus einer Legacy-Applikation sollen per Kafka verteilt werden
 - ...
 - generiert periodisch Log-Zeilen
 
--> Kafka Connect Filestream 
+-> Kafka Connect Filestream
+
+CSV: https://rmoff.net/2020/06/17/loading-csv-data-into-kafka/
+
+### Szenario 3 (Logging)
+ 
+ - nginx access log 
+
+### Szenario 4 (Testdaten)
+
+- datagen source connector
+
+https://de.confluent.io/blog/easy-ways-generate-test-data-kafka/
 
 ## Sonstiges
 
@@ -139,13 +83,16 @@ Daten aus einer Legacy-Applikation sollen per Kafka verteilt werden
     - Avro / Protobuf / JSON Schema
     - Schema Evolution
     - Forcierte Kompatibilität
+    
+https://docs.confluent.io/platform/current/schema-registry/index.html
 
 # Live Demo
 
 Buildah / Podman / Skopeo = Ersatz für Docker mit Daemon
 
+# Nachteile
 
-
+- Debugging von Fehlern manchmal schwer
 
 # Vids
 https://www.youtube.com/watch?v=Jkcp28ki82k
@@ -160,3 +107,23 @@ https://unsplash.com/photos/ZgmGq_eFmUs
 https://unsplash.com/s/photos/excavator
 
 
+# Offene Fragen:
+
+- Guarantees:  at least once, at most once, and will support exactly once in a future release when that capability is available natively within Kafka
+- DLQ https://docs.confluent.io/current/connect/concepts.html#dead-letter-queue
+- Licensing
+
+# TODO
+
+- snapd, microk8s lokal intallieren
+
+    sudo pacman -S snapd
+    sudo systemctl enable --now snapd.socket
+    # support for classic snaps
+    ln -s /var/lib/snapd/snap /snap
+
+
+
+    # reset consumer offset for a connector
+    kafkacat -b my-cluster-kafka-bootstrap.kafka-demo.svc.cluster.local:9092 -C -t connect-cluster-offsets -K# -f 'Partition %p Key %k Value %s\n' -e -Z -q
+    echo '["jdbc-source-inventory-orders",{"query":"query"}]#' | kafkacat -b my-cluster-kafka-bootstrap.kafka-demo.svc.cluster.local:9092 -P -t connect-cluster-offsets -K# -Z -p 4

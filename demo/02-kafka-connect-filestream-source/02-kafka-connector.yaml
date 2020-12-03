@@ -1,0 +1,30 @@
+# source: https://github.com/abhirockzz/strimzi-kafka-connect-eventhubs
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaConnector
+metadata:
+  name: file-source-messagelog
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+    scenario: "2"
+spec:
+  class: org.apache.kafka.connect.file.FileStreamSourceConnector
+  tasksMax: 1
+  config:
+    # read from message.log, write events to topic "filelogs"
+    file: /tmp/messages.log
+    topic: logfiles
+
+    # wrap raw data and add file info
+    transforms: hoistField,insertField
+    transforms.hoistField.type: org.apache.kafka.connect.transforms.HoistField$Value
+    transforms.hoistField.field: "raw"
+
+    transforms.insertField.type: org.apache.kafka.connect.transforms.InsertField$Value
+    transforms.insertField.static.field: "file"
+    transforms.insertField.static.value: "messages.log"
+
+    # convert message key and value to JSON (omit schema)
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
